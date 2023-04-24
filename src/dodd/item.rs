@@ -1,6 +1,6 @@
 use super::Node;
 
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::Display;
 use std::ops::Index;
 
 pub struct Item<T>
@@ -13,23 +13,9 @@ pub struct Item<T>
 impl<T> Item<T>
 	where T: Display
 {
-	pub fn new(value: T, next: Node<T>) -> Self {
-		println!("Creating item: {}", value);
-		Item { value, next }
-	}
-	
 	pub fn print_get_next(&self) -> &Node<T> {
-		let next = &self.next;
-		print!("{}{}", &self, if next.is_some() { ", " } else { "\n" });
-		next
-	}
-}
-
-impl<T> Display for Item<T>
-	where T: Display
-{
-	fn fmt(&self, f: &mut Formatter) -> Result {
-		write!(f, "{}", self.value)
+		print!("{}{}", self.value, if self.next.is_none() { "\n" } else { ", " });
+		&self.next
 	}
 }
 
@@ -51,43 +37,41 @@ impl<T> Index<usize> for Item<T>
 		let mut current: &'a Item<T> = self;
 		for _i in 1..=n {
 			previous = current;
-			current = match &previous.next {
-				Some(x) => x,
+			current = match previous.next {
 				None => panic!("index out of bounds: the length is {} but the index is {}", _i, n),
+				Some(ref x) => x,
 			}
 		}
 		current
 	}
 }
 
-pub fn fold<T, A, R>(f_some: fn(&Item<T>, &Item<T>, A) -> A, f_last: fn(&Item<T>, A) -> R, f_empty: fn(A) -> R, accumulator: A, item: &Node<T>) -> R
-	where T: Display
+pub fn fold<T, A, R, S, L, E>(f_some: S, f_last: L, f_empty: E, accumulator: A, item: &Node<T>) -> R
+	where T: Display, S: Copy + Fn(&Item<T>, &Item<T>, A) -> A, L: Fn(&Item<T>, A) -> R, E: Fn(A) -> R
 {
 	match item {
+		None => f_empty(accumulator),
 		Some(x) => {
 			let next = &x.next;
 			match next {
-				Some(y) => fold(f_some, f_last, f_empty, f_some(&*x, &*y, accumulator), next),
 				None => f_last(&*x, accumulator),
+				Some(y) => fold(f_some, f_last, f_empty, f_some(&*x, &*y, accumulator), next),
 			}
 		},
-		None => f_empty(accumulator),
 	}
 }
 
-pub fn foldback<T, A, R>(f_some: fn(&Item<T>, &Item<T>, A) -> A, f_last: fn(&Item<T>) -> A, f_empty: fn() -> A, generator: &dyn Fn(A) -> R, item: &Node<T>) -> R
-	where T: Display
+pub fn foldback<T, A, R, S, L, E>(f_some: S, f_last: L, f_empty: E, generator: &dyn Fn(A) -> R, item: &Node<T>) -> R
+	where T: Display, S: Copy + Fn(&Item<T>, &Item<T>, A) -> A, L: Fn(&Item<T>) -> A, E: Fn() -> A
 {
 	match item {
+		None => generator(f_empty()),
 		Some(x) => {
 			let next = &x.next;
 			match next {
-				Some(y) => foldback(
-					f_some, f_last, f_empty, &|inner_val| -> R { generator(f_some(&*x, &*y, inner_val)) }, next
-				),
 				None => generator(f_last(&*x)),
+				Some(y) => foldback(f_some, f_last, f_empty, &|inner_val| generator(f_some(&*x, &*y, inner_val)), next),
 			}
 		},
-		None => generator(f_empty()),
 	}
 }

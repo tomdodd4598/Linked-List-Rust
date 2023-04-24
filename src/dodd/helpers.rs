@@ -1,39 +1,43 @@
-use super::item::Item;
 use super::Node;
+use crate::dodd::item::{self, Item};
 
 use std::fmt::Display;
-use crate::dodd::item;
 
-pub fn insert_item<T>(start: &mut Node<T>, val: T, insert_before: fn(&T, &Item<T>) -> bool)
-	where T: Display
+pub fn insert_item<T, F>(start: &mut Node<T>, val: T, insert_before: F)
+	where T: Display, F: Fn(&T, &Item<T>) -> bool
 {
+	println!("Creating item: {}", val);
 	unsafe {
 		let mut tracer = start as *mut Node<T>;
 		while let Some(x) = &mut *tracer {
-			match insert_before(&val, &x) {
-				true => break,
-				false => tracer = &mut x.next,
+			if insert_before(&val, &x) {
+				break
+			}
+			else {
+				tracer = &mut x.next
 			}
 		}
-		*tracer = Some(Box::new(Item::new(val, tracer.replace(None))))
+		*tracer = Some(Box::new(Item { value: val, next: tracer.replace(None) }))
 	}
 }
 
-pub fn remove_item<T>(start: &mut Node<T>, val: T, value_equals: fn(&Item<T>, &T) -> bool)
-	where T: Display
+pub fn remove_item<T, F>(start: &mut Node<T>, val: T, value_equals: F)
+	where T: Display, F: Fn(&Item<T>, &T) -> bool
 {
 	unsafe {
 		let mut tracer = start as *mut Node<T>;
 		while let Some(x) = &mut *tracer {
-			match value_equals(&x, &val) {
-				true => break,
-				false => tracer = &mut x.next,
+			if value_equals(&x, &val) {
+				break
+			}
+			else {
+				tracer = &mut x.next
 			}
 		}
 
-		match &mut *tracer {
-			Some(x) => *tracer = (&mut x.next as *mut Node<T>).replace(None),
+		match *tracer {
 			None => println!("Item {} does not exist!", val),
+			Some(ref mut x) => *tracer = (&mut x.next as *mut Node<T>).replace(None),
 		}
 	}
 }
@@ -44,7 +48,7 @@ pub fn remove_all<T>(start: &mut Node<T>)
 	*start = None
 }
 
-pub fn print_list<T>(mut start: &Node<T>)
+pub fn print_loop<T>(mut start: &Node<T>)
 	where T: Display
 {
 	while let Some(x) = start {
@@ -55,21 +59,25 @@ pub fn print_list<T>(mut start: &Node<T>)
 pub fn print_iterator<T>(start: &Node<T>)
 	where T: Display
 {
-	struct ItemIterator<'a, T> where T: Display {
+	struct ItemIterator<'a, T>
+		where T: Display
+	{
 		pub item: &'a Node<T>
 	}
 
-	impl<'a, T> Iterator for ItemIterator<'a, T> where T: Display {
+	impl<'a, T> Iterator for ItemIterator<'a, T>
+		where T: Display
+	{
 		type Item = &'a Box<Item<T>>;
 
 		fn next(&mut self) -> Option<Self::Item> {
 			match self.item {
+				None => None,
 				Some(x) => {
 					let current = self.item.as_ref();
 					self.item = &x.next;
 					current
 				},
-				None => None,
 			}
 		}
 	}

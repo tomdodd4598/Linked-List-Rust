@@ -25,13 +25,13 @@ fn is_valid_string(string: &str) -> bool {
 	regex.is_match(string)
 }
 
-fn insert_before(val: &String, oth: &Item<String>) -> bool {
+fn insert_before(val: &String, item: &Item<String>) -> bool {
 	if let Ok(x) = BigInt::from_str(val) {
-		if let Ok(y) = BigInt::from_str(&oth.value) {
+		if let Ok(y) = BigInt::from_str(&item.value) {
 			return x <= y
 		}
 	}
-	*val <= oth.value
+	*val <= item.value
 }
 
 fn value_equals(item: &Item<String>, val: &String) -> bool {
@@ -42,7 +42,6 @@ fn main() {
 	let mut start = None;
 	
 	let mut begin = true;
-	let mut input;
 	
 	loop {
 		if !begin {
@@ -68,10 +67,10 @@ fn main() {
 				helpers::remove_all(&mut start);
 			}
 			else {
-				input = &string[1..];
-				if is_valid_string(input) {
+				let substr = &string[1..];
+				if is_valid_string(substr) {
 					println!("\nRemoving item...");
-					helpers::remove_item(&mut start, String::from(input), value_equals);
+					helpers::remove_item(&mut start, String::from(substr), value_equals);
 				}
 				else {
 					println!("\nCould not parse input!");
@@ -79,8 +78,8 @@ fn main() {
 			}
 		}
 		else if string == "l" {
-			println!("\nList print...");
-			helpers::print_list(&start);
+			println!("\nLoop print...");
+			helpers::print_loop(&start);
 		}
 		else if string == "i" {
 			println!("\nIterator print...");
